@@ -38,7 +38,7 @@ java_parking/
 
 ## 📊 UML Class Diagram
 
-![UML Diagram](./uml-diagram.png)
+![UML Diagram](./classe.jpeg)
 
 > 🔹 **Note:**  
 > Place the UML image in the root of the repository and name it `uml-diagram.png`.
