@@ -5,17 +5,24 @@ public class Vehicle extends Thread {
     private int id;
     private String plateNumber;
     private Parking parking;
+    private Owner owner;
 
-    public Vehicle(int id, Parking parking) {
-        this.id = id;
-        this.parking = parking;
-    }
+
 
     @Override
     public long getId() {
         return this.id;
     }
+    public Vehicle(int id, String plateNumber, Owner owner, Parking parking) {
+        this.id = id;
+        this.plateNumber = plateNumber;
+        this.owner = owner;
+        this.parking = parking;
+    }
 
+    public Owner getOwner() {
+        return owner;
+    }
     @Override
     public void run() {
         try {
