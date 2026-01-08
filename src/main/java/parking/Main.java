@@ -1,30 +1,49 @@
 package parking;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-
 public class Main {
-    public static void main(String[] args) throws SQLException {
-       /* String url =
-                "jdbc:mysql://localhost:3306/parking_db"
-                        + "?useSSL=false"
-                        + "&serverTimezone=UTC"
-                        + "&allowPublicKeyRetrieval=true";
-        String user = "parking_user";
-        String password = "password123";
 
+    public static void main(String[] args) {
 
-        Connection conn = DriverManager.getConnection(url, user, password);
-        System.out.println("Connected to MySQL!");
-        conn.close();
-        */
-        Parking parking = new Parking(5);
-        for (int i = 0; i < 10; i++) {
-            /*Vehicle vehicle = new Vehicle(i, parking);
-            vehicle.start();*/
+        System.out.println("=== PARKING SYSTEM START ===");
+
+        // 1️⃣ Create parking with capacity
+        Parking parking = new Parking(3);
+
+        // 2️⃣ Load vehicles from database
+        parking.setVehiclesFromDb();
+
+        // 3️⃣ Show loaded vehicles
+        parking.showVehicleList();
+
+        System.out.println("\n=== VEHICLES ENTERING CONCURRENTLY ===");
+
+        // 4️⃣ Get vehicles
+        Vehicle[] vehicles = parking.getVehicles();
+
+        // 5️⃣ Simulate concurrent entry
+        for (Vehicle vehicle : vehicles) {
+            new Thread(() -> {
+                try {
+                    parking.enter(vehicle);
+
+                    // Vehicle stays parked for a while
+                    Thread.sleep(2000);
+
+                    parking.leave(vehicle);
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }, "Vehicle-" + vehicle.getId()).start();
         }
-    }
-    }
 
+        // 6️⃣ Wait before ending program
+        try {
+            Thread.sleep(8000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
+        System.out.println("\n=== PARKING SYSTEM END ===");
+    }
+}
