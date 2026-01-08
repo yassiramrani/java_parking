@@ -1,4 +1,4 @@
-package main.java.parking;
+package parking;
 
 public class Person {
     protected String name;
