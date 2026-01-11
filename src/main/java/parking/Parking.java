@@ -1,8 +1,6 @@
 package parking;
 
-import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
@@ -13,6 +11,8 @@ public class Parking {
     private final ParkingHistory parkingHistory;
     private Vehicle[] vehicles;
 
+    private java.util.function.Consumer<String> logger;
+
     public Parking(int capacity) {
         this.maxCapacity = capacity;
         this.availablePlaces = new Semaphore(capacity, true);
@@ -20,69 +20,42 @@ public class Parking {
         this.vehicles = new Vehicle[0];
     }
 
+    public void setLogger(java.util.function.Consumer<String> logger) {
+        this.logger = logger;
+    }
+
+    private void log(String message) {
+        System.out.println(message);
+        if (logger != null) {
+            logger.accept(message);
+        }
+    }
+
     public void setVehiclesFromDb() {
-        this.vehicles = loadVehiclesFromDb();
+        ParkingRepository repository = new ParkingRepository();
+        List<Vehicle> vehicleList = repository.loadVehiclesFromDb(this);
+        this.vehicles = vehicleList.toArray(new Vehicle[0]);
     }
 
     public Vehicle[] getVehicles() {
         return vehicles;
     }
 
-    private Vehicle[] loadVehiclesFromDb() {
-        List<Vehicle> list = new ArrayList<>();
-
-        String sql =
-                "SELECT v.id_vehicle, v.plate_number, o.id_owner, " +
-                        "p.name, p.cin, p.phone_number " +
-                        "FROM vehicle v " +
-                        "JOIN owner o ON v.id_owner = o.id_owner " +
-                        "JOIN person p ON o.id_owner = p.id_person";
-
-        try (
-                Connection conn = DriverManager.getConnection(
-                        "jdbc:mysql://localhost:3306/parking_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
-                        "parking_user",
-                        "password123"
-                );
-                PreparedStatement stmt = conn.prepareStatement(sql);
-                ResultSet rs = stmt.executeQuery()
-        ) {
-            while (rs.next()) {
-                Owner owner = new Owner(
-                        rs.getInt("id_owner"),
-                        rs.getString("name"),
-                        rs.getString("cin"),
-                        rs.getString("phone_number")
-                );
-
-                Vehicle vehicle = new Vehicle(
-                        rs.getInt("id_vehicle"),
-                        rs.getString("plate_number"),
-                        owner,
-                        this
-                );
-
-                list.add(vehicle);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return list.toArray(new Vehicle[0]);
+    public ParkingHistory getParkingHistory() {
+        return parkingHistory;
     }
 
     public void enter(Vehicle v) throws InterruptedException {
         if (!availablePlaces.tryAcquire()) {
-            System.out.println("Parking full. Vehicle " + v.getId() + " WAITING...");
+            log("Parking complet. Le véhicule " + v.getId() + " ATTEND...");
             availablePlaces.acquire();
         }
 
         synchronized (this) {
-            System.out.println(
-                    "Vehicle " + v.getId() +
-                            " ENTERED. Available places: " +
-                            availablePlaces.availablePermits()
-            );
+            log(
+                    "Véhicule " + v.getId() +
+                            " ENTRÉ. Places disponibles : " +
+                            availablePlaces.availablePermits());
             parkingHistory.setparkinghistory(v, LocalDateTime.now());
         }
     }
@@ -91,11 +64,10 @@ public class Parking {
         availablePlaces.release();
 
         synchronized (this) {
-            System.out.println(
-                    "Vehicle " + v.getId() +
-                            " LEFT. Available places: " +
-                            availablePlaces.availablePermits()
-            );
+            log(
+                    "Véhicule " + v.getId() +
+                            " SORTI. Places disponibles : " +
+                            availablePlaces.availablePermits());
         }
     }
 

@@ -1,0 +1,263 @@
+package parking;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class ParkingGUI extends JFrame {
+
+    private Parking parking;
+    private JTextArea logArea;
+    private JLabel capacityLabel;
+    private JTextField plateField;
+    private int parkingCapacity = 5;
+    private AtomicInteger vehicleIdCounter = new AtomicInteger(100);
+
+    // Tables
+    private JTable ownerTable;
+    private DefaultTableModel ownerModel;
+    private JTable historyTable;
+    private DefaultTableModel historyModel;
+
+    public ParkingGUI() {
+        // Initialisation du système central
+        parking = new Parking(parkingCapacity);
+        parking.setLogger(this::logMessage);
+
+        // Configuration de la fenêtre
+        setTitle("Système de Gestion de Parking");
+        setSize(900, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        // --- ONGLET 1 : SIMULATION ---
+        JPanel simulationPanel = new JPanel(new BorderLayout());
+
+        // Haut : Capacité & Entrée
+        JPanel simTopPanel = new JPanel(new GridLayout(3, 1));
+        capacityLabel = new JLabel("Capacité : " + parkingCapacity, SwingConstants.CENTER);
+        capacityLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        simTopPanel.add(capacityLabel);
+
+        JPanel inputPanel = new JPanel();
+        inputPanel.add(new JLabel("Plaque d'immatriculation :"));
+        plateField = new JTextField(10);
+        JButton parkButton = new JButton("Garer Véhicule");
+        JButton concurrentSimButton = new JButton("Simuler Entrée Concurrente");
+        inputPanel.add(plateField);
+        inputPanel.add(parkButton);
+        inputPanel.add(concurrentSimButton);
+        simTopPanel.add(inputPanel);
+
+        simulationPanel.add(simTopPanel, BorderLayout.NORTH);
+
+        // Centre : Logs
+        logArea = new JTextArea();
+        logArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(logArea);
+        simulationPanel.add(scrollPane, BorderLayout.CENTER);
+
+        tabbedPane.addTab("Simulation", simulationPanel);
+
+        // --- ONGLET 2 : ADMINISTRATION ---
+        JPanel adminPanel = new JPanel(new BorderLayout());
+
+        // Haut : Formulaires
+        JPanel formsPanel = new JPanel(new GridLayout(1, 2)); // Formulaires côte à côte
+
+        // Formulaire d'Ajout de Véhicule
+        JPanel addVehiclePanel = new JPanel(new GridLayout(5, 2));
+        addVehiclePanel.setBorder(BorderFactory.createTitledBorder("Enregistrer Nouveau Véhicule"));
+        JTextField ownerNameField = new JTextField();
+        JTextField cinField = new JTextField();
+        JTextField phoneField = new JTextField();
+        JTextField newPlateField = new JTextField();
+        JButton registerButton = new JButton("Enregistrer");
+
+        addVehiclePanel.add(new JLabel("Nom Propriétaire :"));
+        addVehiclePanel.add(ownerNameField);
+        addVehiclePanel.add(new JLabel("CIN :"));
+        addVehiclePanel.add(cinField);
+        addVehiclePanel.add(new JLabel("Tél :"));
+        addVehiclePanel.add(phoneField);
+        addVehiclePanel.add(new JLabel("Plaque :"));
+        addVehiclePanel.add(newPlateField);
+        addVehiclePanel.add(new JLabel(""));
+        addVehiclePanel.add(registerButton);
+
+        // Formulaire de Modification de Véhicule
+        JPanel changeVehiclePanel = new JPanel(new GridLayout(3, 2));
+        changeVehiclePanel.setBorder(BorderFactory.createTitledBorder("Modifier Véhicule Propriétaire"));
+        JTextField ownerIdField = new JTextField();
+        JTextField updatePlateField = new JTextField();
+        JButton updateButton = new JButton("Mettre à jour");
+
+        changeVehiclePanel.add(new JLabel("ID Propriétaire :"));
+        changeVehiclePanel.add(ownerIdField);
+        changeVehiclePanel.add(new JLabel("Nouvelle Plaque :"));
+        changeVehiclePanel.add(updatePlateField);
+        changeVehiclePanel.add(new JLabel(""));
+        changeVehiclePanel.add(updateButton);
+
+        formsPanel.add(addVehiclePanel);
+        formsPanel.add(changeVehiclePanel);
+
+        adminPanel.add(formsPanel, BorderLayout.NORTH);
+
+        // Centre : Tableaux
+        JTabbedPane tablesTab = new JTabbedPane();
+
+        // Tableau Propriétaires
+        ownerModel = new DefaultTableModel(new String[] { "ID", "Nom", "CIN", "Tél", "Plaque" }, 0);
+        ownerTable = new JTable(ownerModel);
+        tablesTab.addTab("Propriétaires & Véhicules", new JScrollPane(ownerTable));
+
+        // Tableau Historique
+        historyModel = new DefaultTableModel(new String[] { "Heure", "Détails" }, 0);
+        historyTable = new JTable(historyModel);
+        tablesTab.addTab("Historique Parking", new JScrollPane(historyTable));
+
+        adminPanel.add(tablesTab, BorderLayout.CENTER);
+
+        // Bas : Bouton Actualiser
+        JButton refreshButton = new JButton("Actualiser Données");
+        adminPanel.add(refreshButton, BorderLayout.SOUTH);
+
+        tabbedPane.addTab("Administration", adminPanel);
+
+        add(tabbedPane, BorderLayout.CENTER);
+
+        // --- LISTENERS ---
+
+        // Park Single Vehicle
+        parkButton.addActionListener(e -> {
+            String plate = plateField.getText().trim();
+            if (plate.isEmpty()) {
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Please enter a plate number.");
+                return;
+            }
+            Owner owner = new Owner(1, "Guest", "0000", "000"); // Simpler for simulation
+            Vehicle vehicle = new Vehicle(vehicleIdCounter.getAndIncrement(), plate, owner, parking);
+            new Thread(vehicle, "Vehicle-" + plate).start();
+            plateField.setText("");
+        });
+
+        // Concurrent Simulation
+        concurrentSimButton.addActionListener(e -> {
+            logMessage("--- STARTING CONCURRENT SIMULATION ---");
+            for (int i = 0; i < 5; i++) {
+                int id = vehicleIdCounter.getAndIncrement();
+                String plate = "SIM-" + id;
+                // Dummy owner for sim
+                Owner owner = new Owner(id, "SimUser", "000", "000");
+                Vehicle v = new Vehicle(id, plate, owner, parking);
+                new Thread(v, "Vehicle-" + plate).start();
+            }
+        });
+
+        // Register Vehicle (DB)
+        registerButton.addActionListener(e -> {
+            try {
+                String name = ownerNameField.getText();
+                String cin = cinField.getText();
+                String phone = phoneField.getText();
+                String plate = newPlateField.getText();
+
+                Owner owner = new Owner(0, name, cin, phone);
+                Vehicle vehicle = new Vehicle(0, plate, owner, parking);
+
+                ParkingRepository repo = new ParkingRepository();
+                repo.addVehicle(vehicle);
+
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Vehicle Registered Successfully!");
+                ownerNameField.setText("");
+                cinField.setText("");
+                phoneField.setText("");
+                newPlateField.setText("");
+                refreshData();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Error registering vehicle: " + ex.getMessage());
+            }
+        });
+
+        // Update Vehicle (DB)
+        updateButton.addActionListener(e -> {
+            try {
+                int ownerId = Integer.parseInt(ownerIdField.getText());
+                String newPlate = updatePlateField.getText();
+
+                ParkingRepository repo = new ParkingRepository();
+                repo.updateVehicle(ownerId, newPlate);
+
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Vehicle Updated Successfully!");
+                ownerIdField.setText("");
+                updatePlateField.setText("");
+                refreshData();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Error updating vehicle: " + ex.getMessage());
+            }
+        });
+
+        // Refresh Button
+        refreshButton.addActionListener(e -> refreshData());
+
+        // Initial Load
+        refreshData();
+    }
+
+    private void refreshData() {
+        // Refresh Owners
+        ownerModel.setRowCount(0); // Clear table
+        try {
+            ParkingRepository repo = new ParkingRepository();
+            List<Vehicle> vehicles = repo.loadVehiclesFromDb(parking);
+            for (Vehicle v : vehicles) {
+                Owner o = v.getOwner();
+                ownerModel.addRow(new Object[] {
+                        o.getIdOwner(),
+                        o.name, // Accessing protected field (same package)
+                        o.cin,
+                        o.phoneNumber,
+                        v.getPlateNumber()
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); // Log helper
+        }
+
+        // Refresh History
+        historyModel.setRowCount(0);
+        try {
+            Map<java.time.LocalDateTime, Object> history = parking.getParkingHistory().getParkingMap();
+            for (Map.Entry<java.time.LocalDateTime, Object> entry : history.entrySet()) {
+                historyModel.addRow(new Object[] {
+                        entry.getKey().toString(),
+                        entry.getValue().toString()
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void logMessage(String message) {
+        SwingUtilities.invokeLater(() -> {
+            logArea.append(message + "\n");
+        });
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new ParkingGUI().setVisible(true);
+        });
+    }
+}

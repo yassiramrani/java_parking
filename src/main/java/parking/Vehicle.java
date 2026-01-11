@@ -1,18 +1,11 @@
 package parking;
 
-
-public class Vehicle extends Thread {
+public class Vehicle implements Runnable {
     private int id;
     private String plateNumber;
     private Parking parking;
     private Owner owner;
 
-
-
-    @Override
-    public long getId() {
-        return this.id;
-    }
     public Vehicle(int id, String plateNumber, Owner owner, Parking parking) {
         this.id = id;
         this.plateNumber = plateNumber;
@@ -20,14 +13,31 @@ public class Vehicle extends Thread {
         this.parking = parking;
     }
 
+    public String getPlateNumber() {
+        return plateNumber;
+    }
+
+    public long getId() {
+        return this.id;
+    }
+
     public Owner getOwner() {
         return owner;
     }
+
+    @Override
+    public String toString() {
+        return "Vehicle{" +
+                "id=" + id +
+                ", plateNumber='" + plateNumber + '\'' +
+                '}';
+    }
+
     @Override
     public void run() {
         try {
             parking.enter(this);
-            sleep(2000);
+            Thread.sleep(2000);
             parking.leave(this);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

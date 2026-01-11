@@ -6,38 +6,26 @@ public class Main {
 
         System.out.println("=== PARKING SYSTEM START ===");
 
-        // 1️⃣ Create parking with capacity
+        // 1️⃣ Création du parking avec une capacité donnée
         Parking parking = new Parking(3);
 
-        // 2️⃣ Load vehicles from database
+        // 2️⃣ Chargement des véhicules depuis la base de données
         parking.setVehiclesFromDb();
 
-        // 3️⃣ Show loaded vehicles
+        // 3️⃣ Affichage des véhicules chargés
         parking.showVehicleList();
 
-        System.out.println("\n=== VEHICLES ENTERING CONCURRENTLY ===");
+        System.out.println("\n=== VÉHICULES ENTRANT EN SILMULATION ===");
 
-        // 4️⃣ Get vehicles
+        // 4️⃣ Récupération de la liste des véhicules
         Vehicle[] vehicles = parking.getVehicles();
 
-        // 5️⃣ Simulate concurrent entry
+        // 5️⃣ Simulation d'entrée concurrente (plusieurs threads)
         for (Vehicle vehicle : vehicles) {
-            new Thread(() -> {
-                try {
-                    parking.enter(vehicle);
-
-                    // Vehicle stays parked for a while
-                    Thread.sleep(2000);
-
-                    parking.leave(vehicle);
-
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }, "Vehicle-" + vehicle.getId()).start();
+            new Thread(vehicle, "Vehicle-" + vehicle.getId()).start();
         }
 
-        // 6️⃣ Wait before ending program
+        // 6️⃣ Attente avant la fin du programme
         try {
             Thread.sleep(8000);
         } catch (InterruptedException e) {

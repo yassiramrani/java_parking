@@ -20,6 +20,7 @@ Each vehicle is represented by a thread, and parking availability is controlled 
 
 ## 🧱 Project Structure
 
+```
 java_parking/
 ├── src/
 │ └── main/
@@ -30,117 +31,102 @@ java_parking/
 │ ├── Parking.java
 │ ├── ParkingHistory.java
 │ ├── Person.java
+│ ├── ParkingRepository.java
+│ ├── ParkingGUI.java
 │ └── Vehicle.java
 ├── pom.xml
 └── README.md
+```
 
 ---
 
-## 📊 UML Class Diagram
+## ▶️ How to Run the Project (Tutoriel)
 
-![UML Diagram](./class.jpeg)
+### 1️⃣ Prerequisites
+Ensure you have the following installed:
+- **Java JDK 8** or higher
+- **Maven**
+- **MySQL Database**
 
+### 2️⃣ Database Setup
+Create a MySQL database naming it `parking_db` (or as per `DatabaseConfig.java`) and run the following SQL script to create necessary tables:
 
+```sql
+CREATE DATABASE parking_db;
+USE parking_db;
+
+CREATE TABLE person (
+    id_person INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    cin VARCHAR(20),
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE owner (
+    id_owner INT PRIMARY KEY,
+    FOREIGN KEY (id_owner) REFERENCES person(id_person)
+);
+
+CREATE TABLE vehicle (
+    id_vehicle INT AUTO_INCREMENT PRIMARY KEY,
+    plate_number VARCHAR(20),
+    id_owner INT,
+    FOREIGN KEY (id_owner) REFERENCES owner(id_owner)
+);
+```
+
+### 3️⃣ Configuration
+Update `src/main/java/parking/DatabaseConfig.java` with your database credentials:
+```java
+public class DatabaseConfig {
+    public static final String URL = "jdbc:mysql://localhost:3306/parking_db";
+    public static final String USER = "root";
+    public static final String PASSWORD = "your_password";
+}
+```
+
+### 4️⃣ Execution
+You can run the application using Maven.
+
+**To run the GUI (Recommended):**
+```bash
+mvn clean compile exec:java -Dexec.mainClass="parking.ParkingGUI"
+```
+
+**To run the Console Simulation:**
+```bash
+mvn clean compile exec:java -Dexec.mainClass="parking.Main"
+```
 
 ---
 
 ## 🧩 Class Descriptions
 
 ### 🔹 Person (Abstract Base Class)
-- Attributes:
-  - `name`
-  - `cin`
-  - `phoneNumber`
-- Method:
-  - `showInfos()`
-
----
+- **Attributes**: `name`, `cin`, `phoneNumber`
+- **Method**: `showInfos()`
 
 ### 🔹 Owner (extends Person)
-- Attributes:
-  - `idOwner`
-  - `vehicle`
-- Method:
-  - `showInfos()`
-
----
+- **Attributes**: `idOwner`, `vehicle`
+- **Method**: `showInfos()`
 
 ### 🔹 Admin
-- Attributes:
-  - `idAdmin`
-  - `parking`
-- Methods:
-  - `changeVehicle(Owner owner)`
-  - `displayParkingHistory(Parking parking)`
+- **Attributes**: `idAdmin`, `parking`
+- **Methods**: `changeVehicle`, `displayParkingHistory`
 
----
-
-### 🔹 Vehicle (extends Thread)
-- Attributes:
-  - `id`
-  - `plateNumber`
-  - `parking`
-- Method:
-  - `run()` – simulates vehicle behavior
-
----
+### 🔹 Vehicle (implements Runnable)
+- **Attributes**: `id`, `plateNumber`, `parking`
+- **Method**: `run()` – simulates vehicle behavior
 
 ### 🔹 Parking
-- Attributes:
-  - `capacity`
-  - `availablePlaces : Semaphore`
-  - `vehicles : Vehicle[]`
-  - `parkingHistory`
-- Methods:
-  - `enter(Vehicle v, LocalDateTime date)`
-  - `leave(int placeIndex)`
-  - `showVehicleList()`
-  - `searchVehicleByOwnerId(int ownerId)`
+- **Attributes**: `capacity`, `availablePlaces`, `parkingHistory`
+- **Methods**: `enter`, `leave`, `setVehiclesFromDb`
 
----
-
-### 🔹 ParkingHistory
-- Attribute:
-  - `parkingMap : Map<LocalDateTime, Owner>`
-- Purpose:
-  - Stores parking activity history
-
----
-
-## ⚙️ Technologies Used
-
-- Java
-- Maven
-- Java Concurrency (Thread, Semaphore)
-- UML
-- Git & GitHub
-
----
-
-## ▶️ How to Run the Project
-
-### Compile
-
-### Run Tests
-
----
-
-## 🚀 Future Improvements
-
-- Add a console or GUI interface
-- Persist parking history to a database
-- Support multiple parkings
-- Add pricing and billing system
-- Improve thread scheduling and logging
+### 🔹 ParkingGUI
+- **Purpose**: Provides a graphical interface for simulation and management.
 
 ---
 
 ## 👨‍💻 Author
 
 Developed as part of a **Java OOP & Concurrency learning project**.
-
----
-
-## 📜 License
-
-This project is for **educational purposes only**.
