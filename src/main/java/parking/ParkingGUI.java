@@ -184,7 +184,8 @@ public class ParkingGUI extends JFrame {
                 refreshData();
             } catch (Exception ex) {
                 ex.printStackTrace();
-                JOptionPane.showMessageDialog(ParkingGUI.this, "Error registering vehicle: " + ex.getMessage());
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Erreur : " + ex.getMessage(), "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 

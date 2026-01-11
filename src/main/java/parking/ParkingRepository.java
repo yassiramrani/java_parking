@@ -44,7 +44,54 @@ public class ParkingRepository {
         return list;
     }
 
-    public void addVehicle(Vehicle vehicle) {
+    public int getVehicleCount(int ownerId) {
+        String sql = "SELECT COUNT(*) FROM vehicle WHERE id_owner = ?";
+        try (Connection conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD);
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, ownerId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public boolean isVehicleRegistered(String plateNumber) {
+        String sql = "SELECT id_vehicle FROM vehicle WHERE plate_number = ?";
+        try (Connection conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD);
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, plateNumber);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public void addVehicle(Vehicle vehicle) throws Exception {
+        // Vérification de la limite de véhicules (Max 3)
+        // Note: Ici on vérifie par rapport à l'ID propriétaire.
+        // Si c'est un NOUVEAU propriétaire (flux actuel), il a 0 véhicule.
+        // Cette logique sert surtout si on ajoute un véhicule à un propriétaire
+        // EXISTANT.
+        // Dans l'implémentation actuelle de l'interface graphique, on crée souvent un
+        // NOUVEAU owner.
+        // Mais pour la robustesse:
+        if (vehicle.getOwner().getIdOwner() > 0) { // Si ID valide
+            int count = getVehicleCount(vehicle.getOwner().getIdOwner());
+            if (count >= 3) {
+                throw new Exception("Le propriétaire a atteint la limite de 3 véhicules.");
+            }
+        }
+
         String insertPersonSql = "INSERT INTO person (name, cin, phone_number) VALUES (?, ?, ?)";
         String insertOwnerSql = "INSERT INTO owner (id_owner) VALUES (?)";
         String insertVehicleSql = "INSERT INTO vehicle (plate_number, id_owner) VALUES (?, ?)";
@@ -54,8 +101,17 @@ public class ParkingRepository {
             conn.setAutoCommit(false);
 
             try {
-                // Insertion de la Personne (Détails du propriétaire)
                 int personId = -1;
+
+                // Si l'owner a déjà un ID valide, on l'utilise directement (cas d'ajout
+                // véhicule à owner existant)
+                // TO-DO: L'interface actuelle crée toujours un 'new Owner(0, ...)'.
+                // Pour respecter la demande strictement, on suppose ici le flux actuel.
+                // Si on voulait supporter "Ajouter véhicule à Owner existant", il faudrait
+                // changer l'IHM.
+                // Ici, on insère toujours une nouvelle Personne/Owner.
+
+                // Insertion de la Personne (Détails du propriétaire)
                 try (PreparedStatement stmt = conn.prepareStatement(insertPersonSql, Statement.RETURN_GENERATED_KEYS)) {
                     stmt.setString(1, vehicle.getOwner().name);
                     stmt.setString(2, vehicle.getOwner().cin);
@@ -90,6 +146,7 @@ public class ParkingRepository {
             }
         } catch (SQLException e) {
             e.printStackTrace();
+            throw e; // Renvoyer l'exception pour l'IHM
         }
     }
 
