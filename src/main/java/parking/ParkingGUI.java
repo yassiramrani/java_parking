@@ -47,7 +47,7 @@ public class ParkingGUI extends JFrame {
         simTopPanel.add(capacityLabel);
 
         JPanel inputPanel = new JPanel();
-        inputPanel.add(new JLabel("Plaque d'immatriculation :"));
+        inputPanel.add(new JLabel("Plaque(s) (séparées par espace/virgule) :"));
         plateField = new JTextField(10);
         JButton parkButton = new JButton("Garer Véhicule");
         JButton concurrentSimButton = new JButton("Simuler Entrée Concurrente");
@@ -95,12 +95,12 @@ public class ParkingGUI extends JFrame {
         // Formulaire de Modification de Véhicule
         JPanel changeVehiclePanel = new JPanel(new GridLayout(3, 2));
         changeVehiclePanel.setBorder(BorderFactory.createTitledBorder("Modifier Véhicule Propriétaire"));
-        JTextField ownerIdField = new JTextField();
+        JTextField oldPlateField = new JTextField();
         JTextField updatePlateField = new JTextField();
         JButton updateButton = new JButton("Mettre à jour");
 
-        changeVehiclePanel.add(new JLabel("ID Propriétaire :"));
-        changeVehiclePanel.add(ownerIdField);
+        changeVehiclePanel.add(new JLabel("Plaque Actuelle :"));
+        changeVehiclePanel.add(oldPlateField);
         changeVehiclePanel.add(new JLabel("Nouvelle Plaque :"));
         changeVehiclePanel.add(updatePlateField);
         changeVehiclePanel.add(new JLabel(""));
@@ -136,30 +136,58 @@ public class ParkingGUI extends JFrame {
 
         // --- LISTENERS ---
 
-        // Park Single Vehicle
+        // Park one or multiple vehicles
         parkButton.addActionListener(e -> {
-            String plate = plateField.getText().trim();
-            if (plate.isEmpty()) {
-                JOptionPane.showMessageDialog(ParkingGUI.this, "Please enter a plate number.");
+            String text = plateField.getText().trim();
+            if (text.isEmpty()) {
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Veuillez entrer une ou plusieurs plaques.");
                 return;
             }
-            Owner owner = new Owner(1, "Guest", "0000", "000"); // Simpler for simulation
-            Vehicle vehicle = new Vehicle(vehicleIdCounter.getAndIncrement(), plate, owner, parking);
-            new Thread(vehicle, "Vehicle-" + plate).start();
+
+            // Découpage par virgule, point-virgule ou espace
+            String[] plates = text.split("[,\\s;]+");
+
+            for (String plate : plates) {
+                if (!plate.isEmpty()) {
+                    // Propriétaire invité (l'accès sera vérifié par le Parking)
+                    Owner owner = new Owner(1, "Invité", "0000", "000");
+                    Vehicle vehicle = new Vehicle(vehicleIdCounter.getAndIncrement(), plate, owner, parking);
+                    new Thread(vehicle, "Véhicule-" + plate).start();
+                }
+            }
             plateField.setText("");
         });
 
         // Concurrent Simulation
         concurrentSimButton.addActionListener(e -> {
-            logMessage("--- STARTING CONCURRENT SIMULATION ---");
-            for (int i = 0; i < 5; i++) {
-                int id = vehicleIdCounter.getAndIncrement();
-                String plate = "SIM-" + id;
-                // Dummy owner for sim
-                Owner owner = new Owner(id, "SimUser", "000", "000");
-                Vehicle v = new Vehicle(id, plate, owner, parking);
-                new Thread(v, "Vehicle-" + plate).start();
-            }
+            logMessage("--- DÉMARRAGE SIMULATION ---");
+            new Thread(() -> { // Run in background to avoid freezing UI if DB is slow
+                try {
+                    ParkingRepository repo = new ParkingRepository();
+                    List<Vehicle> dbVehicles = repo.loadVehiclesFromDb(parking);
+
+                    if (dbVehicles.isEmpty()) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(ParkingGUI.this,
+                                "Aucun véhicule en base pour la simulation.\nVeuillez en enregistrer d'abord.",
+                                "Info", JOptionPane.WARNING_MESSAGE));
+                        return;
+                    }
+
+                    int count = 0;
+                    for (Vehicle v : dbVehicles) {
+                        if (count >= 5)
+                            break; // Limit to 5 for demo
+                        new Thread(v, "Vehicle-" + v.getPlateNumber()).start();
+                        count++;
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException ignored) {
+                        } // Stagger slightly
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }).start();
         });
 
         // Register Vehicle (DB)
@@ -192,19 +220,24 @@ public class ParkingGUI extends JFrame {
         // Update Vehicle (DB)
         updateButton.addActionListener(e -> {
             try {
-                int ownerId = Integer.parseInt(ownerIdField.getText());
-                String newPlate = updatePlateField.getText();
+                String oldPlate = oldPlateField.getText().trim();
+                String newPlate = updatePlateField.getText().trim();
+
+                if (oldPlate.isEmpty() || newPlate.isEmpty()) {
+                    JOptionPane.showMessageDialog(ParkingGUI.this, "Veuillez remplir tous les champs.");
+                    return;
+                }
 
                 ParkingRepository repo = new ParkingRepository();
-                repo.updateVehicle(ownerId, newPlate);
+                repo.updateVehicle(oldPlate, newPlate);
 
-                JOptionPane.showMessageDialog(ParkingGUI.this, "Vehicle Updated Successfully!");
-                ownerIdField.setText("");
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Véhicule mis à jour avec succès !");
+                oldPlateField.setText("");
                 updatePlateField.setText("");
                 refreshData();
             } catch (Exception ex) {
                 ex.printStackTrace();
-                JOptionPane.showMessageDialog(ParkingGUI.this, "Error updating vehicle: " + ex.getMessage());
+                JOptionPane.showMessageDialog(ParkingGUI.this, "Erreur lors de la mise à jour : " + ex.getMessage());
             }
         });
 

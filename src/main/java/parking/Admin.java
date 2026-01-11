@@ -18,16 +18,11 @@ public class Admin extends Person {
         return parking;
     }
 
-    public void changeVehicle(Owner owner, String newPlate) {
+    public void changeVehicle(String oldPlate, String newPlate) {
         ParkingRepository repository = new ParkingRepository();
-        repository.updateVehicle(owner.getIdOwner(), newPlate);
+        repository.updateVehicle(oldPlate, newPlate);
 
-        // Mise à jour de l'objet local si nécessaire, bien que nous devrions recharger
-        // ou gérer l'état
-        // Pour cette application simple, nous supposons que la mise à jour en BDD est
-        // l'action principale.
-        System.out
-                .println("Admin " + name + " a changé le véhicule du propriétaire " + owner.name + " vers " + newPlate);
+        System.out.println("Admin " + name + " a changé le véhicule " + oldPlate + " vers " + newPlate);
     }
 
     public void display_parking_history() {

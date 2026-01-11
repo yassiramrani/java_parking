@@ -150,13 +150,13 @@ public class ParkingRepository {
         }
     }
 
-    public void updateVehicle(int ownerId, String newPlate) {
-        String sql = "UPDATE vehicle SET plate_number = ? WHERE id_owner = ?";
+    public void updateVehicle(String oldPlate, String newPlate) {
+        String sql = "UPDATE vehicle SET plate_number = ? WHERE plate_number = ?";
         try (Connection conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER,
                 DatabaseConfig.PASSWORD);
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, newPlate);
-            stmt.setInt(2, ownerId);
+            stmt.setString(2, oldPlate);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

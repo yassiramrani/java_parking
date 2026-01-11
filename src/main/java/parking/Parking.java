@@ -45,12 +45,12 @@ public class Parking {
         return parkingHistory;
     }
 
-    public void enter(Vehicle v) throws InterruptedException {
+    public boolean enter(Vehicle v) throws InterruptedException {
         // Vérification si le véhicule est enregistré
         ParkingRepository repo = new ParkingRepository();
         if (!repo.isVehicleRegistered(v.getPlateNumber())) {
             log("ACCÈS REFUSÉ. Le véhicule " + v.getPlateNumber() + " n'est pas enregistré.");
-            return;
+            return false;
         }
 
         if (!availablePlaces.tryAcquire()) {
@@ -65,6 +65,7 @@ public class Parking {
                             availablePlaces.availablePermits());
             parkingHistory.setparkinghistory(v, LocalDateTime.now());
         }
+        return true;
     }
 
     public void leave(Vehicle v) {

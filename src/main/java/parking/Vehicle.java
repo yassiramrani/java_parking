@@ -36,9 +36,10 @@ public class Vehicle implements Runnable {
     @Override
     public void run() {
         try {
-            parking.enter(this);
-            Thread.sleep(2000);
-            parking.leave(this);
+            if (parking.enter(this)) {
+                Thread.sleep(2000);
+                parking.leave(this);
+            }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
