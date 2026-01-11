@@ -20,4 +20,68 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.1</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>parking.ParkingGUI</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      
+      <plugin>
+        <groupId>com.akathist.maven.plugins.launch4j</groupId>
+        <artifactId>launch4j-maven-plugin</artifactId>
+        <version>2.5.1</version>
+        <executions>
+          <execution>
+            <id>l4j-clui</id>
+            <phase>package</phase>
+            <goals>
+              <goal>launch4j</goal>
+            </goals>
+            <configuration>
+              <headerType>gui</headerType>
+              <jar>target/java_parking-1.0-SNAPSHOT.jar</jar>
+              <outfile>target/ParkingSystem.exe</outfile>
+              <errTitle>App Error</errTitle>
+              <classPath>
+                <mainClass>parking.ParkingGUI</mainClass>
+              </classPath>
+              <jre>
+                <minVersion>1.8.0</minVersion>
+              </jre>
+              <versionInfo>
+                <fileVersion>1.0.0.0</fileVersion>
+                <txtFileVersion>1.0.0.0</txtFileVersion>
+                <fileDescription>Parking System</fileDescription>
+                <copyright>2026 Parking Corp</copyright>
+                <productVersion>1.0.0.0</productVersion>
+                <txtProductVersion>1.0.0.0</txtProductVersion>
+                <productName>Parking System</productName>
+                <companyName>Parking Corp</companyName>
+                <internalName>ParkingSystem</internalName>
+                <originalFilename>ParkingSystem.exe</originalFilename>
+              </versionInfo>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
 </project>

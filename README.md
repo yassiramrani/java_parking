@@ -95,8 +95,23 @@ mvn clean compile exec:java -Dexec.mainClass="parking.ParkingGUI"
 
 **To run the Console Simulation:**
 ```bash
-mvn clean compile exec:java -Dexec.mainClass="parking.Main"
 ```
+
+**To run the self-contained JAR:**
+```bash
+java -jar target/java_parking-1.0-SNAPSHOT.jar
+```
+
+### 5️⃣ Windows Executable (.exe)
+To create a Windows `.exe` file (requires building with Maven):
+```bash
+mvn clean package
+```
+The executable will be located at:
+- `target/ParkingSystem.exe`
+
+You can simply **double-click** this file on Windows to run the application (Java 8+ required).
+A `run_windows.bat` script is also provided for convenience.
 
 ---
 
