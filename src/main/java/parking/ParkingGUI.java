@@ -64,6 +64,15 @@ public class ParkingGUI extends JFrame {
         JScrollPane scrollPane = new JScrollPane(logArea);
         simulationPanel.add(scrollPane, BorderLayout.CENTER);
 
+        // Bas : Visualisation Graphique
+        ParkingPanel parkingPanel = new ParkingPanel();
+        parkingPanel.setPreferredSize(new Dimension(800, 100)); // Hauteur fixe
+        simulationPanel.add(parkingPanel, BorderLayout.SOUTH);
+
+        // Timer pour mise à jour temps réel (100ms)
+        Timer timer = new Timer(100, e -> parkingPanel.repaint());
+        timer.start();
+
         tabbedPane.addTab("Simulation", simulationPanel);
 
         // --- ONGLET 2 : ADMINISTRATION ---
@@ -126,15 +135,32 @@ public class ParkingGUI extends JFrame {
 
         adminPanel.add(tablesTab, BorderLayout.CENTER);
 
-        // Bas : Bouton Actualiser
+        // Bas : Boutons (Actualiser & Détails)
+        JPanel buttonsPanel = new JPanel();
         JButton refreshButton = new JButton("Actualiser Données");
-        adminPanel.add(refreshButton, BorderLayout.SOUTH);
+        JButton showDetailsButton = new JButton("Voir Détails");
+        buttonsPanel.add(refreshButton);
+        buttonsPanel.add(showDetailsButton);
+        adminPanel.add(buttonsPanel, BorderLayout.SOUTH);
 
         tabbedPane.addTab("Administration", adminPanel);
 
         add(tabbedPane, BorderLayout.CENTER);
 
         // --- LISTENERS ---
+
+        // Tab Change Listener (Password Protection)
+        tabbedPane.addChangeListener(e -> {
+            if (tabbedPane.getSelectedIndex() == 1) { // Administration Tab
+                String input = JOptionPane.showInputDialog(ParkingGUI.this, "Entrez le mot de passe administrateur :",
+                        "Sécurité", JOptionPane.QUESTION_MESSAGE);
+                if (input == null || !input.equals("admin2004")) {
+                    JOptionPane.showMessageDialog(ParkingGUI.this, "Mot de passe incorrect !", "Accès Refusé",
+                            JOptionPane.ERROR_MESSAGE);
+                    tabbedPane.setSelectedIndex(0); // Return to Simulation
+                }
+            }
+        });
 
         // Park one or multiple vehicles
         parkButton.addActionListener(e -> {
@@ -244,6 +270,27 @@ public class ParkingGUI extends JFrame {
         // Refresh Button
         refreshButton.addActionListener(e -> refreshData());
 
+        // Show Details Button
+        showDetailsButton.addActionListener(e -> {
+            int selectedRow = ownerTable.getSelectedRow();
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(ParkingGUI.this,
+                        "Veuillez sélectionner un propriétaire dans le tableau.");
+                return;
+            }
+
+            String name = (String) ownerModel.getValueAt(selectedRow, 1);
+            String cin = (String) ownerModel.getValueAt(selectedRow, 2);
+            String phone = (String) ownerModel.getValueAt(selectedRow, 3);
+            String plate = (String) ownerModel.getValueAt(selectedRow, 4);
+
+            String message = String.format("Détails du Propriétaire:\n\nNom: %s\nCIN: %s\nTéléphone: %s\nPlaque: %s",
+                    name, cin, phone, plate);
+
+            JOptionPane.showMessageDialog(ParkingGUI.this, message, "Détails Propriétaire",
+                    JOptionPane.INFORMATION_MESSAGE);
+        });
+
         // Initial Load
         refreshData();
     }
@@ -293,5 +340,44 @@ public class ParkingGUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             new ParkingGUI().setVisible(true);
         });
+    }
+
+    // Inner class for visualization
+    class ParkingPanel extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            if (parking == null)
+                return;
+
+            int capacity = parkingCapacity;
+            int available = parking.getAvailableSpots();
+            int occupied = capacity - available;
+
+            int width = getWidth();
+            int height = getHeight();
+            int boxWidth = (width / capacity) - 10;
+            int boxHeight = height - 40;
+
+            for (int i = 0; i < capacity; i++) {
+                int x = i * (boxWidth + 10) + 5;
+                int y = 20;
+
+                if (i < occupied) {
+                    g.setColor(Color.RED);
+                    g.fillRect(x, y, boxWidth, boxHeight);
+                    g.setColor(Color.WHITE);
+                    g.drawString("Occupé", x + boxWidth / 2 - 20, y + boxHeight / 2);
+                } else {
+                    g.setColor(Color.GREEN);
+                    g.fillRect(x, y, boxWidth, boxHeight);
+                    g.setColor(Color.BLACK);
+                    g.drawString("Libre", x + boxWidth / 2 - 15, y + boxHeight / 2);
+                }
+                g.setColor(Color.BLACK);
+                g.drawRect(x, y, boxWidth, boxHeight);
+            }
+        }
     }
 }

@@ -45,6 +45,10 @@ public class Parking {
         return parkingHistory;
     }
 
+    public int getAvailableSpots() {
+        return availablePlaces.availablePermits();
+    }
+
     public boolean enter(Vehicle v) throws InterruptedException {
         // Vérification si le véhicule est enregistré
         ParkingRepository repo = new ParkingRepository();
