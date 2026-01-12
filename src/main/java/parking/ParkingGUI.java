@@ -27,6 +27,9 @@ public class ParkingGUI extends JFrame {
         parking = new Parking(parkingCapacity);
         parking.setLogger(this::logMessage);
 
+        // Ensure history table exists
+        new ParkingRepository().initializeHistoryTable();
+
         // Configuration de la fenêtre
         setTitle("Système de Gestion de Parking");
         setSize(900, 700);
@@ -137,8 +140,13 @@ public class ParkingGUI extends JFrame {
         JPanel buttonsPanel = new JPanel();
         JButton refreshButton = new JButton("Actualiser Données");
         JButton showDetailsButton = new JButton("Voir Détails");
+        JButton deleteOwnerButton = new JButton("Supprimer Propriétaire");
+        deleteOwnerButton.setBackground(Color.RED);
+        deleteOwnerButton.setForeground(Color.WHITE);
+
         buttonsPanel.add(refreshButton);
         buttonsPanel.add(showDetailsButton);
+        buttonsPanel.add(deleteOwnerButton);
         adminPanel.add(buttonsPanel, BorderLayout.SOUTH);
 
         tabbedPane.addTab("Administration", adminPanel);
@@ -197,17 +205,15 @@ public class ParkingGUI extends JFrame {
                         return;
                     }
 
-                    int count = 0;
-                    for (Vehicle v : dbVehicles) {
-                        if (count >= 5)
-                            break; // Limit to 5 for demo
-                        new Thread(v, "Vehicle-" + v.getPlateNumber()).start();
-                        count++;
-                        try {
-                            Thread.sleep(200);
-                        } catch (InterruptedException ignored) {
-                        } // Stagger slightly
-                    }
+                    dbVehicles.stream()
+                            .limit(5)
+                            .forEach(v -> {
+                                new Thread(v, "Vehicle-" + v.getPlateNumber()).start();
+                                try {
+                                    Thread.sleep(200);
+                                } catch (InterruptedException ignored) {
+                                }
+                            });
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -217,10 +223,16 @@ public class ParkingGUI extends JFrame {
         // Register Vehicle (DB)
         registerButton.addActionListener(e -> {
             try {
-                String name = ownerNameField.getText();
-                String cin = cinField.getText();
-                String phone = phoneField.getText();
-                String plate = newPlateField.getText();
+                String name = ownerNameField.getText().trim();
+                String cin = cinField.getText().trim();
+                String phone = phoneField.getText().trim();
+                String plate = newPlateField.getText().trim();
+
+                if (name.isEmpty() || cin.isEmpty() || phone.isEmpty() || plate.isEmpty()) {
+                    JOptionPane.showMessageDialog(ParkingGUI.this, "Tous les champs sont obligatoires !", "Erreur",
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
 
                 Owner owner = new Owner(0, name, cin, phone);
                 Vehicle vehicle = new Vehicle(0, plate, owner, parking);
@@ -248,7 +260,8 @@ public class ParkingGUI extends JFrame {
                 String newPlate = updatePlateField.getText().trim();
 
                 if (oldPlate.isEmpty() || newPlate.isEmpty()) {
-                    JOptionPane.showMessageDialog(ParkingGUI.this, "Veuillez remplir tous les champs.");
+                    JOptionPane.showMessageDialog(ParkingGUI.this, "Veuillez remplir tous les champs.", "Erreur",
+                            JOptionPane.WARNING_MESSAGE);
                     return;
                 }
 
@@ -289,6 +302,35 @@ public class ParkingGUI extends JFrame {
                     JOptionPane.INFORMATION_MESSAGE);
         });
 
+        // Delete Owner Button
+        deleteOwnerButton.addActionListener(e -> {
+            int selectedRow = ownerTable.getSelectedRow();
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(ParkingGUI.this,
+                        "Veuillez sélectionner un propriétaire dans le tableau.");
+                return;
+            }
+
+            int ownerId = (int) ownerModel.getValueAt(selectedRow, 0);
+            int response = JOptionPane.showConfirmDialog(ParkingGUI.this,
+                    "Êtes-vous sûr de vouloir supprimer ce propriétaire et ses véhicules ?",
+                    "Confirmation de suppression",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+
+            if (response == JOptionPane.YES_OPTION) {
+                try {
+                    new ParkingRepository().deleteOwner(ownerId);
+                    JOptionPane.showMessageDialog(ParkingGUI.this, "Propriétaire supprimé avec succès.");
+                    refreshData();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(ParkingGUI.this,
+                            "Erreur lors de la suppression : " + ex.getMessage());
+                }
+            }
+        });
+
         // Initial Load
         refreshData();
     }
@@ -299,7 +341,7 @@ public class ParkingGUI extends JFrame {
         try {
             ParkingRepository repo = new ParkingRepository();
             List<Vehicle> vehicles = repo.loadVehiclesFromDb(parking);
-            for (Vehicle v : vehicles) {
+            vehicles.stream().forEach(v -> {
                 Owner o = v.getOwner();
                 ownerModel.addRow(new Object[] {
                         o.getIdOwner(),
@@ -308,7 +350,7 @@ public class ParkingGUI extends JFrame {
                         o.phoneNumber,
                         v.getPlateNumber()
                 });
-            }
+            });
         } catch (Exception e) {
             e.printStackTrace(); // Log helper
         }
@@ -316,13 +358,13 @@ public class ParkingGUI extends JFrame {
         // Refresh History
         historyModel.setRowCount(0);
         try {
-            Map<java.time.LocalDateTime, Object> history = parking.getParkingHistory().getParkingMap();
-            for (Map.Entry<java.time.LocalDateTime, Object> entry : history.entrySet()) {
+            Map<java.time.LocalDateTime, Object> history = new ParkingRepository().loadHistory();
+            history.entrySet().stream().forEach(entry -> {
                 historyModel.addRow(new Object[] {
                         entry.getKey().toString(),
                         entry.getValue().toString()
                 });
-            }
+            });
         } catch (Exception e) {
             e.printStackTrace();
         }

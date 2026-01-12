@@ -68,6 +68,12 @@ public class Parking {
                             " ENTRÉ. Places disponibles : " +
                             availablePlaces.availablePermits());
             parkingHistory.setparkinghistory(v, LocalDateTime.now());
+            // Persist to DB
+            try {
+                repo.logHistory(v, LocalDateTime.now());
+            } catch (Exception e) {
+                log("Erreur lors de la sauvegarde de l'historique en base : " + e.getMessage());
+            }
         }
         return true;
     }
@@ -85,19 +91,16 @@ public class Parking {
 
     public void showVehicleList() {
         System.out.println("=== Vehicles loaded from DB ===");
-        for (Vehicle v : vehicles) {
-            System.out.println(v);
-        }
+        java.util.Arrays.stream(vehicles)
+                .forEach(System.out::println);
     }
 
     public void searchVehicleByOwnerId(int ownerId) {
-        boolean found = false;
-        for (Vehicle v : vehicles) {
-            if (v.getOwner().getIdOwner() == ownerId) {
-                System.out.println("Vehicle found: " + v);
-                found = true;
-            }
-        }
+        boolean found = java.util.Arrays.stream(vehicles)
+                .filter(v -> v.getOwner().getIdOwner() == ownerId)
+                .peek(v -> System.out.println("Vehicle found: " + v))
+                .count() > 0;
+
         if (!found) {
             System.out.println("No vehicle found for owner " + ownerId);
         }

@@ -162,4 +162,95 @@ public class ParkingRepository {
             e.printStackTrace();
         }
     }
+
+    public void initializeHistoryTable() {
+        String sql = "CREATE TABLE IF NOT EXISTS parking_access_logs (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "plate_number VARCHAR(50), " +
+                "event_time TIMESTAMP, " +
+                "event_type VARCHAR(50) DEFAULT 'ENTRY'" +
+                ")";
+        try (Connection conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD);
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void logHistory(Vehicle vehicle, java.time.LocalDateTime time) {
+        String sql = "INSERT INTO parking_access_logs (plate_number, event_time, event_type) VALUES (?, ?, 'ENTRY')";
+        try (Connection conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD);
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, vehicle.getPlateNumber());
+            stmt.setTimestamp(2, java.sql.Timestamp.valueOf(time));
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public java.util.Map<java.time.LocalDateTime, Object> loadHistory() {
+        java.util.Map<java.time.LocalDateTime, Object> history = new java.util.LinkedHashMap<>();
+        String sql = "SELECT event_time, plate_number FROM parking_access_logs ORDER BY event_time DESC";
+
+        try (Connection conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD);
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                java.time.LocalDateTime time = rs.getTimestamp("event_time").toLocalDateTime();
+                String plate = rs.getString("plate_number");
+                history.put(time, "Vehicle " + plate);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return history;
+    }
+
+    public void deleteOwner(int ownerId) throws SQLException {
+        // Ideally checking against the person ID if that's what we have or mapping it
+        // correctly.
+        // Based on loadVehiclesFromDb, id_owner in Owner object == id_person in DB.
+
+        // However, in the DB schema inferred:
+        // person(id_person) <--- owner(id_owner) <--- vehicle(id_owner)
+        // AND owner(id_owner) is FK to person(id_person).
+
+        String deleteVehicles = "DELETE FROM vehicle WHERE id_owner = ?";
+        String deleteOwner = "DELETE FROM owner WHERE id_owner = ?";
+        String deletePerson = "DELETE FROM person WHERE id_person = ?";
+
+        try (Connection conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD)) {
+            conn.setAutoCommit(false);
+            try {
+                // Delete Vehicles first
+                try (PreparedStatement stmt = conn.prepareStatement(deleteVehicles)) {
+                    stmt.setInt(1, ownerId);
+                    stmt.executeUpdate();
+                }
+
+                // Delete Owner entry
+                try (PreparedStatement stmt = conn.prepareStatement(deleteOwner)) {
+                    stmt.setInt(1, ownerId);
+                    stmt.executeUpdate();
+                }
+
+                // Delete Person entry
+                try (PreparedStatement stmt = conn.prepareStatement(deletePerson)) {
+                    stmt.setInt(1, ownerId);
+                    stmt.executeUpdate();
+                }
+
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
 }
